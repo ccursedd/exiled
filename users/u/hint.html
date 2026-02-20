@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#mev/hint</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+    height:100vh;
+    font-family:'Inter',sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+    color:white;
+    background:url("https://raw.githubusercontent.com/ccursedd/bg/refs/heads/main/0215.gif") no-repeat center center fixed;
+    background-size:cover;
+}
+
+/* Overlay */
+.black-screen{
+    position:fixed;
+    inset:0;
+    background:#000;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    cursor:pointer;
+    transition:opacity .6s ease;
+    z-index:20;
+}
+.black-screen.fade-out{
+    opacity:0;
+    pointer-events:none;
+}
+.intro-text{
+    font-size:.99rem;
+    letter-spacing:3px;
+    opacity:.9;
+}
+
+/* Tabs */
+.tabs{
+    position:fixed;
+    top:40px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:50px;
+    font-size:.8rem;
+    letter-spacing:2px;
+    text-transform:uppercase;
+}
+.tab{
+    cursor:pointer;
+    opacity:.5;
+    transition:.3s ease;
+    position:relative;
+}
+.tab:hover{opacity:.9;}
+.tab.active{opacity:1;}
+.tab.active::after{
+    content:"";
+    position:absolute;
+    left:0;
+    bottom:-6px;
+    width:100%;
+    height:2px;
+    background:white;
+    opacity:.4;
+}
+
+/* Card */
+.frame{
+    position:absolute;
+    width:420px;
+    padding:50px 40px;
+    border-radius:24px;
+
+    background:rgba(20,20,20,.45);
+    backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.06);
+
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+
+    text-align:center;
+
+    opacity:0;
+    transform:translateY(15px);
+    transition:.45s ease;
+    pointer-events:none;
+}
+.frame.show{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+}
+
+/* Profile */
+.pfp{
+    width:115px;
+    height:115px;
+    border-radius:50%;
+    object-fit:cover;
+    margin-bottom:18px;
+    border:1px solid rgba(255,255,255,.15);
+}
+
+.username{
+    font-size:1.9rem;
+    font-weight:600;
+    letter-spacing:.5px;
+}
+
+.rich-tag{
+    font-size:.8rem;
+    opacity:.5;
+    margin-left:8px;
+}
+
+/* Button */
+.button{
+    display:inline-block;
+    margin-top:25px;
+    padding:10px 24px;
+    border-radius:30px;
+    font-size:.75rem;
+    letter-spacing:1px;
+    text-transform:uppercase;
+
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    color:white;
+    text-decoration:none;
+
+    transition:.25s ease;
+}
+.button:hover{
+    background:rgba(255,255,255,.12);
+}
+
+/* Users */
+.social-list{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    margin-top:25px;
+}
+.social-card{
+    padding:14px 18px;
+    border-radius:16px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.06);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:.9rem;
+    transition:.2s ease;
+}
+.social-card:hover{
+    background:rgba(255,255,255,.08);
+}
+.social-left{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    opacity:.8;
+}
+.social-left img{
+    width:18px;
+    height:18px;
+    filter:invert(1);
+    opacity:.6;
+}
+.social-right{
+    opacity:.6;
+}
+
+/* Snow */
+#snow-layer{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:1;
+}
+.snowflake{
+    position:absolute;
+    color:white;
+    opacity:.5;
+}
+</style>
+</head>
+<body>
+
+<div class="black-screen" onclick="startMotion()" id="overlay">
+    <div class="intro-text">@tkuy, @ouwq, @wpqa, @mev, @7ct, @cursed, @nn7</div>
+</div>
+
+<div class="tabs">
+    <div class="tab active" onclick="showTab('profile', this)">Profile</div>
+    <div class="tab" onclick="showTab('users', this)">My @'s</div>
+</div>
+
+<div id="snow-layer"></div>
+
+<!-- PROFILE -->
+<div class="frame show" id="profile">
+    <img class="pfp" src="https://raw.githubusercontent.com/ccursedd/exiled/refs/heads/main/ezgif.com-animated-gif-maker.gif">
+    <div>
+        <span class="username" id="username"></span>
+        <span class="rich-tag">RICH</span>
+    </div>
+
+    <a href="https://discord.gg/c7n8BEfZ" target="_blank" class="button">
+        join discord
+    </a>
+</div>
+
+<!-- USERS -->
+<div class="frame" id="users">
+    <div style="font-size:1.1rem; opacity:.8;">My @'s</div>
+
+    <div class="social-list">
+        <div class="social-card">
+            <div class="social-left">
+                <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/discord.svg">
+                Discord
+            </div>
+            <div class="social-right">@tkuy · @ouwq · @wpqa</div>
+        </div>
+
+        <div class="social-card">
+            <div class="social-left">
+                <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/telegram.svg">
+                Telegram
+            </div>
+            <div class="social-right">@gutcanvas</div>
+        </div>
+
+        <div class="social-card" onclick="window.open('https://cursed.lat/c','_blank')" style="cursor:pointer;">
+            <div class="social-left">
+                <img src="https://raw.githubusercontent.com/ccursedd/youknow/refs/heads/main/globee.png">
+                Website
+            </div>
+            <div class="social-right">cursed.lat/c</div>
+        </div>
+    </div>
+</div>
+
+<audio id="audioPlayer">
+    <source src="https://r2.guns.lol/149bc3a9-7b6a-4ec8-ba23-eefb5bbc2c60.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+let started=false;
+const usernameText="#mev/hint";
+const usernameEl=document.getElementById("username");
+let i=0;
+
+function typeLoop(){
+    usernameEl.textContent=usernameText.slice(0,i);
+    i++;
+    if(i<=usernameText.length){
+        setTimeout(typeLoop,90);
+    }
+}
+
+function showTab(tabId, el){
+    document.querySelectorAll(".frame").forEach(f=>f.classList.remove("show"));
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.getElementById(tabId).classList.add("show");
+    el.classList.add("active");
+}
+
+function startMotion(){
+    if(started) return;
+    started=true;
+
+    document.getElementById("overlay").classList.add("fade-out");
+
+    const audio=document.getElementById("audioPlayer");
+    audio.volume=0.6;
+    audio.play();
+
+    setTimeout(()=>{
+        typeLoop();
+        initSnow();
+    },300);
+}
+
+/* Snow */
+const snowLayer=document.getElementById("snow-layer");
+const snowflakes=[];
+function initSnow(){
+    for(let i=0;i<25;i++) createFlake(true);
+    setInterval(()=>createFlake(false),2000);
+    requestAnimationFrame(updateSnow);
+}
+function createFlake(spread){
+    const f=document.createElement("div");
+    f.classList.add("snowflake");
+    f.textContent="❄";
+    f.size=Math.random()*10+8;
+    f.speedY=Math.random()*0.15+0.05;
+    f.speedX=Math.random()*0.08-0.04;
+    f.x=Math.random()*innerWidth;
+    f.y=spread?Math.random()*innerHeight:-10;
+    f.style.fontSize=f.size+"px";
+    snowLayer.appendChild(f);
+    snowflakes.push(f);
+}
+function updateSnow(){
+    snowflakes.forEach(f=>{
+        f.y+=f.speedY;
+        f.x+=f.speedX;
+        if(f.x>innerWidth) f.x=0;
+        if(f.x<0) f.x=innerWidth;
+        if(f.y>innerHeight) f.y=-10;
+        f.style.transform=`translate(${f.x}px,${f.y}px)`;
+    });
+    requestAnimationFrame(updateSnow);
+}
+</script>
+
+</body>
+</html>
