@@ -3,636 +3,464 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DropMail — Instant Gmail Generator</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>DropMail — Real Temporary Inbox</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #13131a;
-    --surface2: #1c1c28;
-    --border: #2a2a38;
-    --border2: #3a3a52;
-    --accent: #6c63ff;
-    --accent2: #9d97ff;
-    --accent-glow: rgba(108,99,255,0.15);
-    --text: #f0f0ff;
-    --muted: #888899;
-    --danger: #ff5e6d;
-    --success: #4fffb0;
-    --mono: 'Space Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+:root {
+  --bg:#060608;--s1:#0e0e14;--s2:#161620;--s3:#1e1e2c;
+  --b1:#252535;--b2:#353550;
+  --accent:#00e5a0;--accent-dim:rgba(0,229,160,0.1);--accent-mid:rgba(0,229,160,0.35);
+  --text:#e8e8f0;--muted:#6b6b88;--muted2:#9898b0;
+  --red:#ff4f6d;--yellow:#ffd166;
+  --mono:'IBM Plex Mono',monospace;--sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;flex-direction:column;min-height:100vh}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,160,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
 
-  /* Scanline texture overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 3px,
-      rgba(255,255,255,0.012) 3px,
-      rgba(255,255,255,0.012) 4px
-    );
-    pointer-events: none;
-    z-index: 1000;
-  }
+header{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:56px;border-bottom:1px solid var(--b1);background:rgba(6,6,8,0.94);backdrop-filter:blur(16px)}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--sans);font-size:1.2rem;font-weight:800;letter-spacing:-0.5px}
+.logo-dot{width:9px;height:9px;background:var(--accent);border-radius:50%;box-shadow:0 0 8px var(--accent);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+.logo em{font-style:normal;color:var(--accent)}
+.hdr-right{font-family:var(--mono);font-size:0.7rem;color:var(--muted);display:flex;align-items:center;gap:7px}
+#liveDot{width:6px;height:6px;background:var(--muted);border-radius:50%;transition:background .3s,box-shadow .3s}
+#liveDot.live{background:var(--accent);box-shadow:0 0 6px var(--accent)}
 
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.25rem 2rem;
-    border-bottom: 1px solid var(--border);
-    background: rgba(10,10,15,0.9);
-    backdrop-filter: blur(12px);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: var(--mono);
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
-  .logo-icon {
-    width: 32px; height: 32px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-  }
-  .logo span { color: var(--accent2); }
-  .tagline {
-    font-size: 0.78rem;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    font-family: var(--mono);
-  }
+.layout{position:relative;z-index:1;flex:1;display:grid;grid-template-columns:330px 1fr;max-width:1080px;margin:0 auto;width:100%;padding:1.75rem 1.5rem;gap:1.25rem}
 
-  main {
-    flex: 1;
-    max-width: 820px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 3rem 1.5rem 5rem;
-  }
+/* LEFT */
+.left{display:flex;flex-direction:column;gap:1rem}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:1.4rem}
+.card-label{font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.7rem}
 
-  .hero {
-    text-align: center;
-    margin-bottom: 3rem;
-  }
-  .hero h1 {
-    font-family: var(--mono);
-    font-size: clamp(1.8rem, 5vw, 2.8rem);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -1px;
-    margin-bottom: 0.75rem;
-  }
-  .hero h1 em { font-style: normal; color: var(--accent2); }
-  .hero p {
-    color: var(--muted);
-    font-size: 1rem;
-    font-weight: 300;
-    max-width: 420px;
-    margin: 0 auto;
-    line-height: 1.6;
-  }
+.addr-box{background:var(--bg);border:1px solid var(--b2);border-radius:8px;padding:.8rem 1rem;margin-bottom:.9rem;min-height:50px;display:flex;align-items:center;position:relative;overflow:hidden}
+.addr-box::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:0;transition:opacity .3s}
+.addr-box.active::before{opacity:1}
+.addr-text{font-family:var(--mono);font-size:.8rem;color:var(--accent);word-break:break-all;line-height:1.4;flex:1}
+.addr-text.ph{color:var(--muted);font-style:italic;font-size:.75rem}
 
-  /* Generate card */
-  .gen-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
-  }
-  .gen-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 300px;
-    height: 200px;
-    background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
-    pointer-events: none;
-  }
+.btn-row{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:.6rem 1rem;border-radius:7px;font-family:var(--sans);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .14s;border:none;outline:none;white-space:nowrap}
+.btn-gen{background:var(--accent);color:#000;flex:1;justify-content:center}
+.btn-gen:hover{background:#00ffb3;transform:translateY(-1px)}
+.btn-gen:active{transform:translateY(0)}
+.btn-gen:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;color:var(--muted2);border:1px solid var(--b2)}
+.btn-ghost:hover{border-color:var(--accent-mid);color:var(--accent)}
+.btn-ghost:disabled{opacity:.3;cursor:not-allowed}
+.btn-ghost:disabled:hover{border-color:var(--b2);color:var(--muted2)}
 
-  .email-display {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1.25rem;
-    min-height: 60px;
-  }
-  .email-display .addr {
-    font-family: var(--mono);
-    font-size: clamp(0.78rem, 2.5vw, 1rem);
-    color: var(--accent2);
-    flex: 1;
-    word-break: break-all;
-    letter-spacing: -0.3px;
-  }
-  .email-display .addr.empty {
-    color: var(--muted);
-    font-style: italic;
-    font-size: 0.85rem;
-  }
-  .badge-new {
-    background: rgba(108,99,255,0.2);
-    color: var(--accent2);
-    font-size: 0.65rem;
-    font-family: var(--mono);
-    padding: 3px 8px;
-    border-radius: 20px;
-    border: 1px solid rgba(108,99,255,0.4);
-    white-space: nowrap;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
+.status{font-family:var(--mono);font-size:.7rem;margin-top:.7rem;min-height:16px;color:var(--muted);transition:color .2s}
+.status.ok{color:var(--accent)}.status.err{color:var(--red)}
 
-  .actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0.7rem 1.25rem;
-    border-radius: 8px;
-    font-family: var(--sans);
-    font-size: 0.88rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    border: none;
-    outline: none;
-    text-decoration: none;
-  }
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { background: #7b73ff; transform: translateY(-1px); }
-  .btn-primary:active { transform: translateY(0); }
-  .btn-secondary {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border2);
-  }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent2); }
-  .btn-danger {
-    background: transparent;
-    color: var(--danger);
-    border: 1px solid rgba(255,94,109,0.3);
-  }
-  .btn-danger:hover { background: rgba(255,94,109,0.1); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.hist-card{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:1.25rem 1.4rem;flex:1;display:flex;flex-direction:column;overflow:hidden}
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem}
+.sec-title{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.pill{background:var(--accent-dim);color:var(--accent);font-family:var(--mono);font-size:.62rem;padding:2px 9px;border-radius:20px;border:1px solid var(--accent-mid)}
+.hist-list{display:flex;flex-direction:column;gap:5px;overflow-y:auto;max-height:280px}
+.hist-list::-webkit-scrollbar{width:3px}.hist-list::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.hist-item{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--bg);border:1px solid var(--b1);border-radius:7px;cursor:pointer;transition:border-color .13s}
+.hist-item:hover{border-color:var(--b2)}.hist-item.sel{border-color:var(--accent-mid);background:var(--accent-dim)}
+.hist-addr{flex:1;font-family:var(--mono);font-size:.72rem;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-item.sel .hist-addr{color:var(--accent)}
+.ha{display:flex;gap:4px}
+.ibtn{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:3px 5px;border-radius:4px;font-size:12px;transition:color .13s}
+.ibtn:hover{color:var(--text)}.ibtn.del:hover{color:var(--red)}
+.empty-hist{text-align:center;padding:1.5rem;color:var(--muted);font-family:var(--mono);font-size:.78rem}
 
-  .btn-icon { font-size: 15px; }
+/* RIGHT */
+.inbox-panel{display:flex;flex-direction:column;background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;min-height:500px}
+.inbox-toolbar{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.4rem;border-bottom:1px solid var(--b1);background:var(--s2);gap:12px}
+.iaddr{font-family:var(--mono);font-size:.78rem;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.iaddr.ph{color:var(--muted);font-style:italic}
+.itoolbar-r{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.imeta{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
+.rbtn{background:transparent;border:1px solid var(--b2);color:var(--muted2);cursor:pointer;padding:4px 10px;border-radius:6px;font-size:.72rem;font-family:var(--mono);transition:all .14s;display:flex;align-items:center;gap:5px}
+.rbtn:hover{border-color:var(--accent-mid);color:var(--accent)}.rbtn:disabled{opacity:.3;cursor:not-allowed}
 
-  /* Copy feedback */
-  .copy-toast {
-    position: fixed;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    background: var(--success);
-    color: #000;
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    font-weight: 700;
-    padding: 0.6rem 1.5rem;
-    border-radius: 100px;
-    opacity: 0;
-    transition: all 0.25s;
-    pointer-events: none;
-    z-index: 999;
-  }
-  .copy-toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+.inbox-body{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.inbox-body::-webkit-scrollbar{width:4px}.inbox-body::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
 
-  /* Inbox section */
-  .inbox-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-  }
-  .inbox-header h2 {
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-  }
-  .inbox-header .count {
-    background: var(--accent);
-    color: #fff;
-    font-size: 0.7rem;
-    font-family: var(--mono);
-    padding: 2px 8px;
-    border-radius: 20px;
-  }
+.iplaceholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.85rem;padding:3rem;text-align:center}
+.iplaceholder .bigicon{font-size:2.5rem;opacity:.12}
+.iplaceholder h3{font-size:.95rem;font-weight:700;color:var(--muted2)}
+.iplaceholder p{font-size:.8rem;color:var(--muted);line-height:1.6;max-width:280px}
 
-  .email-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+.msg-list{display:flex;flex-direction:column}
+.msg-item{display:flex;align-items:flex-start;gap:11px;padding:.9rem 1.4rem;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .1s}
+.msg-item:hover{background:var(--s2)}
+.msg-item.unread{border-left:3px solid var(--accent)}
+.msg-item.unread .msubj{color:var(--text);font-weight:700}
+.mavatar{width:34px;height:34px;border-radius:7px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:var(--muted2);flex-shrink:0;font-family:var(--mono)}
+.mcontent{flex:1;min-width:0}
+.mfrom{font-size:.75rem;font-weight:600;color:var(--muted2);margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msubj{font-size:.85rem;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px}
+.mprev{font-size:.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mtime{font-family:var(--mono);font-size:.65rem;color:var(--muted);white-space:nowrap;flex-shrink:0}
 
-  .email-row {
-    display: flex;
-    align-items: center;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    gap: 12px;
-    transition: border-color 0.15s;
-    cursor: default;
-  }
-  .email-row:hover { border-color: var(--border2); }
-  .email-row .addr-col {
-    flex: 1;
-    font-family: var(--mono);
-    font-size: 0.88rem;
-    color: var(--accent2);
-    word-break: break-all;
-  }
-  .email-row .ts {
-    font-size: 0.75rem;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-  .email-row .row-actions {
-    display: flex;
-    gap: 6px;
-  }
-  .icon-btn {
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--muted);
-    cursor: pointer;
-    padding: 5px 8px;
-    border-radius: 6px;
-    font-size: 14px;
-    transition: all 0.15s;
-  }
-  .icon-btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
-  .icon-btn.del:hover { color: var(--danger); border-color: rgba(255,94,109,0.3); }
+/* Detail */
+.edetail{display:none;flex-direction:column;flex:1}
+.edetail.open{display:flex}
+.dheader{padding:1.1rem 1.4rem;border-bottom:1px solid var(--b1);background:var(--s2)}
+.dback{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;color:var(--muted);background:transparent;border:none;cursor:pointer;font-family:var(--sans);margin-bottom:.65rem;transition:color .13s;padding:0}
+.dback:hover{color:var(--accent)}
+.dsubj{font-size:1rem;font-weight:700;margin-bottom:.4rem;line-height:1.3}
+.dmeta{font-size:.74rem;color:var(--muted);font-family:var(--mono);line-height:1.9}
+.dmeta span{color:var(--muted2)}
+.dbody{flex:1;overflow-y:auto;padding:1.4rem}
+.dbody::-webkit-scrollbar{width:4px}.dbody::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.email-frame{background:var(--s2);border-radius:8px;padding:1.1rem;font-size:.85rem;line-height:1.75;color:var(--muted2);word-break:break-word;white-space:pre-wrap}
+.code-box{background:var(--accent-dim);border:1px solid var(--accent-mid);border-radius:7px;padding:.7rem 1.1rem;font-family:var(--mono);font-size:1.2rem;font-weight:600;color:var(--accent);letter-spacing:.18em;display:inline-block;margin:.5rem 0}
 
-  /* Empty state */
-  .empty-state {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: var(--muted);
-  }
-  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; }
-  .empty-state p { font-size: 0.9rem; }
+.spin{animation:spin 0.8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* Loading */
-  .spinner {
-    width: 20px; height: 20px;
-    border: 2px solid rgba(255,255,255,0.15);
-    border-top-color: var(--accent2);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    display: inline-block;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+.toast{position:fixed;bottom:1.75rem;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;font-family:var(--mono);font-size:.75rem;font-weight:700;padding:.5rem 1.4rem;border-radius:100px;opacity:0;pointer-events:none;transition:all .2s;z-index:999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  /* Status bar */
-  .status {
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin-top: 1rem;
-    min-height: 18px;
-    font-family: var(--mono);
-  }
-  .status.ok { color: var(--success); }
-  .status.err { color: var(--danger); }
+footer{position:relative;z-index:1;border-top:1px solid var(--b1);padding:.8rem 2rem;display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:.65rem;color:var(--muted)}
 
-  /* Stats row */
-  .stats-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-  }
-  .stat-card {
-    flex: 1;
-    min-width: 120px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem;
-  }
-  .stat-card .label {
-    font-size: 0.72rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 4px;
-    font-family: var(--mono);
-  }
-  .stat-card .value {
-    font-family: var(--mono);
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--accent2);
-  }
-
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 1.25rem 2rem;
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--muted);
-    font-family: var(--mono);
-  }
-
-  @media (max-width: 480px) {
-    header { padding: 1rem; }
-    main { padding: 2rem 1rem 4rem; }
-    .actions { flex-direction: column; }
-    .btn { justify-content: center; }
-    .email-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-    .email-row .row-actions { width: 100%; justify-content: flex-end; }
-  }
+@media(max-width:740px){
+  .layout{grid-template-columns:1fr;padding:1rem}
+  .inbox-panel{min-height:380px}
+  header{padding:0 1rem}
+  footer{padding:.75rem 1rem}
+}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">
-    <div class="logo-icon">📬</div>
-    Drop<span>Mail</span>
-  </div>
-  <div class="tagline">Instant throwaway addresses</div>
+  <div class="logo"><div class="logo-dot"></div>Drop<em>Mail</em></div>
+  <div class="hdr-right"><div id="liveDot"></div><span id="liveLabel">offline</span></div>
 </header>
 
-<main>
-  <div class="hero">
-    <h1>Generate a <em>disposable</em><br>Gmail address instantly</h1>
-    <p>No sign-up. No tracking. Just hit generate, copy, and use it wherever you need a Gmail.</p>
+<div class="layout">
+  <div class="left">
+    <div class="card">
+      <div class="card-label">// new inbox</div>
+      <div class="addr-box" id="addrBox">
+        <span class="addr-text ph" id="addrText">No address yet</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gen" id="genBtn" onclick="generateAddress()">
+          <span id="genIcon">⚡</span> Generate
+        </button>
+        <button class="btn btn-ghost" id="copyBtn" onclick="copyAddr()" disabled title="Copy">📋</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="hist-card">
+      <div class="sec-header">
+        <span class="sec-title">// saved inboxes</span>
+        <span class="pill" id="histCount">0</span>
+      </div>
+      <div class="hist-list" id="histList">
+        <div class="empty-hist">no addresses yet</div>
+      </div>
+    </div>
   </div>
 
-  <div class="stats-row" id="statsRow">
-    <div class="stat-card">
-      <div class="label">Total Generated</div>
-      <div class="value" id="statTotal">—</div>
+  <div class="inbox-panel">
+    <div class="inbox-toolbar">
+      <div class="iaddr ph" id="iAddr">select or generate an inbox</div>
+      <div class="itoolbar-r">
+        <span class="imeta" id="iMeta"></span>
+        <button class="rbtn" id="refreshBtn" onclick="refreshInbox()" disabled>
+          <span id="refreshIcon">↻</span> refresh
+        </button>
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="label">Active Today</div>
-      <div class="value" id="statToday">—</div>
+    <div class="inbox-body" id="inboxBody">
+      <div class="iplaceholder">
+        <div class="bigicon">📬</div>
+        <h3>Your inbox will appear here</h3>
+        <p>Generate a new address or pick a saved one. Emails show up here — verification codes, links, anything.</p>
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="label">Last Generated</div>
-      <div class="value" style="font-size:0.85rem; padding-top:4px" id="statLast">—</div>
-    </div>
-  </div>
-
-  <div class="gen-card">
-    <div class="email-display" id="emailDisplay">
-      <span class="addr empty" id="emailAddr">Click "Generate" to create an address</span>
-      <span class="badge-new" id="newBadge" style="display:none">NEW</span>
-    </div>
-    <div class="actions">
-      <button class="btn btn-primary" id="generateBtn" onclick="generateEmail()">
-        <span class="btn-icon">⚡</span> Generate Address
-      </button>
-      <button class="btn btn-secondary" id="copyBtn" onclick="copyEmail()" disabled>
-        <span class="btn-icon">📋</span> Copy
-      </button>
-      <button class="btn btn-secondary" id="gmailBtn" onclick="openGmail()" disabled>
-        <span class="btn-icon">📧</span> Open Gmail
-      </button>
-    </div>
-    <div class="status" id="statusMsg"></div>
-  </div>
-
-  <div class="inbox-header">
-    <h2>Saved Addresses</h2>
-    <span class="count" id="listCount">0</span>
-  </div>
-  <div class="email-list" id="emailList">
-    <div class="empty-state">
-      <div class="empty-icon">📭</div>
-      <p>No addresses yet. Generate one above!</p>
+    <div class="edetail" id="eDetail">
+      <div class="dheader">
+        <button class="dback" onclick="closeDetail()">← inbox</button>
+        <div class="dsubj" id="dSubj"></div>
+        <div class="dmeta" id="dMeta"></div>
+      </div>
+      <div class="dbody" id="dBody"></div>
     </div>
   </div>
-</main>
+</div>
 
-<div class="copy-toast" id="copyToast">Copied to clipboard!</div>
+<div class="toast" id="toast"></div>
 
-<footer>DropMail — addresses stored in your Supabase database</footer>
+<footer>
+  <span>DropMail — Mail.tm + Supabase</span>
+  <span id="footerStats">0 addresses stored</span>
+</footer>
 
 <script>
 const SUPABASE_URL = 'https://ylgtgecqhdhakzbjdkqq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ILF6pER_bdL8GppxOzfumg_xsDoMA6T';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-
 const TABLE = 'dropmail_addresses';
+const API = 'https://api.mail.tm';
 
-let currentEmail = null;
-let allEmails = [];
+let active = null;
+let pollTimer = null;
+let currentMsgs = [];
+let allAccounts = [];
 
-const adjectives = ['cozy','swift','fuzzy','lucky','sunny','brave','witty','calm','merry','jolly','silent','clever','gentle','noble','vivid','eager','fancy','grand','happy','lively','peppy','quirky','rusty','snappy','tasty'];
-const nouns = ['tiger','panda','falcon','river','pebble','ember','cloud','spark','maple','cedar','orbit','pixel','quill','raven','stone','brook','flame','ghost','haven','island','jewel','knight','lemon','mocha','ninja'];
-
-function randomName() {
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const num = Math.floor(Math.random() * 9000) + 100;
-  return `${adj}.${noun}.${num}@gmail.com`;
+// ── DB ────────────────────────────────────────────────
+async function dbLoad() {
+  const { data, error } = await db.from(TABLE).select('*').order('created_at', { ascending: false });
+  if (error) { handleDbErr(error); return []; }
+  return data || [];
+}
+async function dbSave(a) {
+  const { error } = await db.from(TABLE).insert([{ email: a.address, token: a.token, account_id: a.id }]);
+  if (error) handleDbErr(error);
+}
+async function dbDel(email) { await db.from(TABLE).delete().eq('email', email); }
+function handleDbErr(e) {
+  if (e.code === '42P01') { setStatus('Table missing — see SQL below', 'err'); showSqlHelp(); }
+  else setStatus('DB: ' + e.message, 'err');
 }
 
-function setStatus(msg, type = '') {
-  const el = document.getElementById('statusMsg');
-  el.textContent = msg;
-  el.className = 'status ' + type;
+// ── Mail.tm ───────────────────────────────────────────
+async function getDomain() {
+  const r = await fetch(`${API}/domains`);
+  const d = await r.json();
+  return d['hydra:member'][0].domain;
 }
-
-async function ensureTable() {
-  // Try to select to see if table exists; if not, we'll handle the error gracefully
-  const { error } = await db.from(TABLE).select('id').limit(1);
-  if (error && error.code === '42P01') {
-    setStatus('Table "dropmail_addresses" not found. Please create it in Supabase.', 'err');
-    return false;
-  }
-  return true;
+async function createAccount(address, password) {
+  const r = await fetch(`${API}/accounts`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, password })
+  });
+  return r.json();
 }
-
-async function loadEmails() {
-  const { data, error } = await db
-    .from(TABLE)
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    if (error.code === '42P01') {
-      setStatus('⚠ Table not found — see setup note below.', 'err');
-      renderTableMissingNote();
-    } else {
-      setStatus('Error loading: ' + error.message, 'err');
-    }
-    return;
-  }
-
-  allEmails = data || [];
-  renderList();
-  updateStats();
+async function getToken(address, password) {
+  const r = await fetch(`${API}/token`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, password })
+  });
+  const d = await r.json();
+  return d.token;
 }
-
-function updateStats() {
-  document.getElementById('statTotal').textContent = allEmails.length;
-  const today = new Date().toDateString();
-  const todayCount = allEmails.filter(e => new Date(e.created_at).toDateString() === today).length;
-  document.getElementById('statToday').textContent = todayCount;
-  if (allEmails.length > 0) {
-    const last = allEmails[0];
-    const d = new Date(last.created_at);
-    document.getElementById('statLast').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } else {
-    document.getElementById('statLast').textContent = '—';
-  }
+async function fetchMessages(token) {
+  const r = await fetch(`${API}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!r.ok) return [];
+  const d = await r.json();
+  return d['hydra:member'] || [];
 }
-
-function renderList() {
-  const list = document.getElementById('emailList');
-  document.getElementById('listCount').textContent = allEmails.length;
-
-  if (allEmails.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No addresses yet. Generate one above!</p></div>`;
-    return;
-  }
-
-  list.innerHTML = allEmails.map(e => {
-    const d = new Date(e.created_at);
-    const ts = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    return `<div class="email-row" id="row-${e.id}">
-      <div class="addr-col">${e.email}</div>
-      <div class="ts">${ts}</div>
-      <div class="row-actions">
-        <button class="icon-btn" title="Copy" onclick="copySpecific('${e.email}')">📋</button>
-        <button class="icon-btn" title="Open Gmail" onclick="window.open('https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(e.email)}','_blank')">📧</button>
-        <button class="icon-btn del" title="Delete" onclick="deleteEmail('${e.id}')">🗑</button>
-      </div>
-    </div>`;
-  }).join('');
+async function fetchMessage(id, token) {
+  const r = await fetch(`${API}/messages/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+  return r.json();
 }
-
-function renderTableMissingNote() {
-  const list = document.getElementById('emailList');
-  list.innerHTML = `<div class="empty-state">
-    <div class="empty-icon">⚠️</div>
-    <p style="margin-bottom:12px">You need to create the <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px">dropmail_addresses</code> table in Supabase.</p>
-    <p style="font-size:0.8rem;color:#888;font-family:monospace;text-align:left;background:#13131a;padding:12px;border-radius:8px;display:inline-block">
-      CREATE TABLE dropmail_addresses (<br>
-      &nbsp;&nbsp;id uuid DEFAULT gen_random_uuid() PRIMARY KEY,<br>
-      &nbsp;&nbsp;email text NOT NULL,<br>
-      &nbsp;&nbsp;created_at timestamptz DEFAULT now()<br>
-      );
-    </p>
-  </div>`;
-}
-
-async function generateEmail() {
-  const btn = document.getElementById('generateBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Generating…';
-  setStatus('');
-
-  const email = randomName();
-
-  const { data, error } = await db.from(TABLE).insert([{ email }]).select();
-
-  btn.disabled = false;
-  btn.innerHTML = '<span class="btn-icon">⚡</span> Generate Address';
-
-  if (error) {
-    if (error.code === '42P01') {
-      setStatus('Table missing — see instructions below.', 'err');
-      renderTableMissingNote();
-    } else {
-      setStatus('Failed to save: ' + error.message, 'err');
-    }
-    return;
-  }
-
-  currentEmail = email;
-  document.getElementById('emailAddr').textContent = email;
-  document.getElementById('emailAddr').classList.remove('empty');
-  document.getElementById('newBadge').style.display = 'inline-flex';
-  document.getElementById('copyBtn').disabled = false;
-  document.getElementById('gmailBtn').disabled = false;
-  setStatus('✓ Saved to database', 'ok');
-
-  await loadEmails();
-}
-
-async function deleteEmail(id) {
-  const { error } = await db.from(TABLE).delete().eq('id', id);
-  if (!error) {
-    document.getElementById('row-' + id)?.remove();
-    allEmails = allEmails.filter(e => e.id !== id);
-    document.getElementById('listCount').textContent = allEmails.length;
-    updateStats();
-    if (allEmails.length === 0) renderList();
-  }
-}
-
-function copyEmail() { if (currentEmail) copySpecific(currentEmail); }
-
-function copySpecific(addr) {
-  navigator.clipboard.writeText(addr).then(() => {
-    const toast = document.getElementById('copyToast');
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2000);
+async function markSeen(id, token) {
+  await fetch(`${API}/messages/${id}`, {
+    method: 'PATCH',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/merge-patch+json' },
+    body: JSON.stringify({ seen: true })
   });
 }
 
-function openGmail() {
-  if (currentEmail) {
-    window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(currentEmail)}`, '_blank');
+// ── Generate ──────────────────────────────────────────
+async function generateAddress() {
+  const btn = document.getElementById('genBtn');
+  const icon = document.getElementById('genIcon');
+  btn.disabled = true;
+  icon.innerHTML = '<span class="spin">↻</span>';
+  setStatus('Connecting to mail server…');
+
+  try {
+    const domain = await getDomain();
+    const user = randUser();
+    const address = `${user}@${domain}`;
+    const password = randPass();
+
+    const acct = await createAccount(address, password);
+    if (!acct.id) throw new Error(acct['hydra:description'] || 'Account creation failed');
+
+    const token = await getToken(address, password);
+    if (!token) throw new Error('Auth failed');
+
+    const account = { address, token, id: acct.id };
+    await dbSave(account);
+    setActive(account);
+    setStatus('✓ Inbox ready — share this address!', 'ok');
+    toast('Inbox created!');
+    await loadHistory();
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    icon.textContent = '⚡';
   }
 }
 
-loadEmails();
+// ── History ───────────────────────────────────────────
+async function loadHistory() {
+  allAccounts = await dbLoad();
+  renderHistory();
+  document.getElementById('footerStats').textContent = `${allAccounts.length} address${allAccounts.length !== 1 ? 'es' : ''} stored`;
+}
+function renderHistory() {
+  const list = document.getElementById('histList');
+  document.getElementById('histCount').textContent = allAccounts.length;
+  if (!allAccounts.length) { list.innerHTML = '<div class="empty-hist">no addresses yet</div>'; return; }
+  list.innerHTML = allAccounts.map(a => `
+    <div class="hist-item ${active?.address === a.email ? 'sel' : ''}" onclick='loadHist(${JSON.stringify({email:a.email,token:a.token,id:a.account_id}).replace(/'/g,"&#39;")})'>
+      <span class="hist-addr">${esc(a.email)}</span>
+      <div class="ha">
+        <button class="ibtn" onclick="event.stopPropagation();copySpec('${esc(a.email)}')" title="Copy">📋</button>
+        <button class="ibtn del" onclick="event.stopPropagation();delHist('${esc(a.email)}')" title="Delete">🗑</button>
+      </div>
+    </div>`).join('');
+}
+async function loadHist(row) {
+  if (!row.token) { setStatus('No token stored for this address', 'err'); return; }
+  setActive({ address: row.email, token: row.token, id: row.id });
+  setStatus('Loaded inbox', 'ok');
+}
+async function delHist(email) {
+  await dbDel(email);
+  if (active?.address === email) { active = null; stopPoll(); resetInbox(); }
+  await loadHistory();
+  toast('Deleted');
+}
+
+// ── Active inbox ──────────────────────────────────────
+function setActive(acct) {
+  stopPoll();
+  active = acct;
+  document.getElementById('addrBox').classList.add('active');
+  document.getElementById('addrText').textContent = acct.address;
+  document.getElementById('addrText').classList.remove('ph');
+  document.getElementById('copyBtn').disabled = false;
+  document.getElementById('refreshBtn').disabled = false;
+  document.getElementById('iAddr').textContent = acct.address;
+  document.getElementById('iAddr').classList.remove('ph');
+  setLive(true);
+  refreshInbox();
+  startPoll();
+  renderHistory();
+}
+async function refreshInbox() {
+  if (!active) return;
+  const rbtn = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  rbtn.disabled = true;
+  icon.classList.add('spin');
+  try {
+    const msgs = await fetchMessages(active.token);
+    currentMsgs = msgs;
+    renderMsgs(msgs);
+  } catch(e) { setStatus('Fetch error: ' + e.message, 'err'); }
+  finally { rbtn.disabled = false; icon.classList.remove('spin'); }
+}
+function renderMsgs(msgs) {
+  const body = document.getElementById('inboxBody');
+  document.getElementById('iMeta').textContent = msgs.length ? `${msgs.length} msg${msgs.length > 1 ? 's' : ''}` : 'empty';
+  if (!msgs.length) {
+    body.innerHTML = `<div class="iplaceholder">
+      <div class="bigicon">📭</div>
+      <h3>Inbox is empty</h3>
+      <p>Share <strong style="color:var(--accent);font-family:var(--mono);font-size:.78rem">${esc(active.address)}</strong> anywhere. Emails appear here within seconds.</p>
+    </div>`;
+    return;
+  }
+  body.innerHTML = '<div class="msg-list">' + msgs.map(m => {
+    const from = m.from?.address || 'unknown';
+    const name = m.from?.name || from;
+    const initials = name.replace(/[^a-zA-Z]/g,'').slice(0,2).toUpperCase() || '??';
+    return `<div class="msg-item ${m.seen ? '' : 'unread'}" onclick="openMsg('${m.id}')">
+      <div class="mavatar">${initials}</div>
+      <div class="mcontent">
+        <div class="mfrom">${esc(name)}</div>
+        <div class="msubj">${esc(m.subject || '(no subject)')}</div>
+        <div class="mprev">${esc(m.intro || '')}</div>
+      </div>
+      <div class="mtime">${fmtTime(m.createdAt)}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+async function openMsg(id) {
+  const msg = await fetchMessage(id, active.token);
+  await markSeen(id, active.token);
+  currentMsgs = currentMsgs.map(m => m.id === id ? {...m, seen: true} : m);
+
+  document.getElementById('dSubj').textContent = msg.subject || '(no subject)';
+  document.getElementById('dMeta').innerHTML =
+    `From: <span>${esc(msg.from?.address || '')}</span><br>To: <span>${esc(active.address)}</span><br>Date: <span>${new Date(msg.createdAt).toLocaleString()}</span>`;
+
+  const txt = msg.text || stripHtml(msg.html?.[0] || '');
+  const codeMatch = txt.match(/\b([A-Z0-9]{5,10}|\d{4,8})\b/);
+  let bodyHtml = `<div class="email-frame">${esc(txt)}</div>`;
+  if (codeMatch) {
+    bodyHtml = `<p style="font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-bottom:6px">// detected code</p>
+      <div class="code-box">${esc(codeMatch[0])}</div>` + bodyHtml;
+  }
+  document.getElementById('dBody').innerHTML = bodyHtml;
+  document.getElementById('inboxBody').style.display = 'none';
+  document.getElementById('eDetail').classList.add('open');
+}
+function closeDetail() {
+  document.getElementById('eDetail').classList.remove('open');
+  document.getElementById('inboxBody').style.display = '';
+  renderMsgs(currentMsgs);
+}
+
+// ── Poll ──────────────────────────────────────────────
+function startPoll() { pollTimer = setInterval(() => { if (active && !document.getElementById('eDetail').classList.contains('open')) refreshInbox(); }, 10000); }
+function stopPoll() { clearInterval(pollTimer); pollTimer = null; }
+function resetInbox() {
+  document.getElementById('iAddr').textContent = 'select or generate an inbox';
+  document.getElementById('iAddr').classList.add('ph');
+  document.getElementById('refreshBtn').disabled = true;
+  document.getElementById('iMeta').textContent = '';
+  document.getElementById('inboxBody').innerHTML = `<div class="iplaceholder"><div class="bigicon">📬</div><h3>Your inbox will appear here</h3><p>Generate a new address or pick a saved one.</p></div>`;
+  setLive(false);
+}
+
+// ── UI helpers ────────────────────────────────────────
+function setStatus(msg, type = '') { const e = document.getElementById('status'); e.textContent = msg; e.className = 'status ' + type; }
+function setLive(on) { document.getElementById('liveDot').className = on ? 'live' : ''; document.getElementById('liveLabel').textContent = on ? 'live' : 'offline'; }
+function copyAddr() { if (active) copySpec(active.address); }
+function copySpec(addr) { navigator.clipboard.writeText(addr).then(() => toast('Copied!')); }
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+function showSqlHelp() {
+  document.getElementById('histList').innerHTML = `<div style="font-size:.68rem;color:var(--muted);font-family:var(--mono);background:var(--bg);border-radius:6px;padding:10px;line-height:1.9">
+    Run in Supabase SQL editor:<br><br>
+    CREATE TABLE dropmail_addresses (<br>
+    &nbsp;id uuid DEFAULT gen_random_uuid() PRIMARY KEY,<br>
+    &nbsp;email text NOT NULL,<br>
+    &nbsp;token text,<br>
+    &nbsp;account_id text,<br>
+    &nbsp;created_at timestamptz DEFAULT now()<br>
+    );
+  </div>`;
+}
+
+// ── Utils ─────────────────────────────────────────────
+const adjs = ['cozy','swift','fuzzy','lucky','sunny','brave','witty','calm','merry','jolly','silent','clever','gentle','noble','vivid','peppy','sassy','shiny'];
+const nouns = ['tiger','panda','falcon','river','pebble','ember','cloud','spark','maple','cedar','orbit','pixel','quill','raven','stone','brook','flame'];
+function randUser() { return `${adjs[~~(Math.random()*adjs.length)]}.${nouns[~~(Math.random()*nouns.length)]}.${~~(Math.random()*9000)+100}`; }
+function randPass() { return Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,5).toUpperCase() + '!'; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function stripHtml(h) { return h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(); }
+function fmtTime(iso) {
+  const d = new Date(iso), now = new Date(), diff = now - d;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return ~~(diff/60000) + 'm ago';
+  if (diff < 86400000) return ~~(diff/3600000) + 'h ago';
+  return d.toLocaleDateString();
+}
+
+loadHistory();
 </script>
 </body>
 </html>
