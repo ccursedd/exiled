@@ -230,35 +230,47 @@ function handleDbErr(e) {
 }
 
 // ── Mail.tm ───────────────────────────────────────────
+async function safeJson(r) {
+  const text = await r.text();
+  if (!text || !text.trim()) return {};
+  try { return JSON.parse(text); } catch(e) { return {}; }
+}
 async function getDomain() {
   const r = await fetch(`${API}/domains`);
-  const d = await r.json();
-  return d['hydra:member'][0].domain;
+  const d = await safeJson(r);
+  const members = d['hydra:member'];
+  if (!members || !members.length) throw new Error('Mail.tm unavailable — try again in a moment');
+  return members[0].domain;
 }
 async function createAccount(address, password) {
   const r = await fetch(`${API}/accounts`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ address, password })
   });
-  return r.json();
+  return safeJson(r);
 }
 async function getToken(address, password) {
-  const r = await fetch(`${API}/token`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address, password })
-  });
-  const d = await r.json();
-  return d.token;
+  await new Promise(res => setTimeout(res, 1200));
+  for (let i = 0; i < 3; i++) {
+    const r = await fetch(`${API}/token`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, password })
+    });
+    const d = await safeJson(r);
+    if (d.token) return d.token;
+    await new Promise(res => setTimeout(res, 1500));
+  }
+  throw new Error('Could not authenticate — Mail.tm may be busy, try again');
 }
 async function fetchMessages(token) {
   const r = await fetch(`${API}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
   if (!r.ok) return [];
-  const d = await r.json();
+  const d = await safeJson(r);
   return d['hydra:member'] || [];
 }
 async function fetchMessage(id, token) {
   const r = await fetch(`${API}/messages/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-  return r.json();
+  return safeJson(r);
 }
 async function markSeen(id, token) {
   await fetch(`${API}/messages/${id}`, {
@@ -286,7 +298,7 @@ async function generateAddress() {
     if (!acct.id) throw new Error(acct['hydra:description'] || 'Account creation failed');
 
     const token = await getToken(address, password);
-    if (!token) throw new Error('Auth failed');
+    if (!token) throw new Error('Could not authenticate — try generating again');
 
     const account = { address, token, id: acct.id };
     await dbSave(account);
@@ -449,7 +461,7 @@ function showSqlHelp() {
 const adjs = ['cozy','swift','fuzzy','lucky','sunny','brave','witty','calm','merry','jolly','silent','clever','gentle','noble','vivid','peppy','sassy','shiny'];
 const nouns = ['tiger','panda','falcon','river','pebble','ember','cloud','spark','maple','cedar','orbit','pixel','quill','raven','stone','brook','flame'];
 function randUser() { return `${adjs[~~(Math.random()*adjs.length)]}.${nouns[~~(Math.random()*nouns.length)]}.${~~(Math.random()*9000)+100}`; }
-function randPass() { return Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,5).toUpperCase() + '!'; }
+function randPass() { const c='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; return Array.from({length:16},()=>c[Math.floor(Math.random()*c.length)]).join(''); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function stripHtml(h) { return h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(); }
 function fmtTime(iso) {
@@ -464,3 +476,4 @@ loadHistory();
 </script>
 </body>
 </html>
+
