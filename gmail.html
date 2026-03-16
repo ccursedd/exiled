@@ -31,7 +31,6 @@ header{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify
 
 .layout{position:relative;z-index:1;flex:1;display:grid;grid-template-columns:330px 1fr;max-width:1080px;margin:0 auto;width:100%;padding:1.75rem 1.5rem;gap:1.25rem}
 
-/* LEFT */
 .left{display:flex;flex-direction:column;gap:1rem}
 .card{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:1.4rem}
 .card-label{font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.7rem}
@@ -71,7 +70,6 @@ header{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify
 .ibtn:hover{color:var(--text)}.ibtn.del:hover{color:var(--red)}
 .empty-hist{text-align:center;padding:1.5rem;color:var(--muted);font-family:var(--mono);font-size:.78rem}
 
-/* RIGHT */
 .inbox-panel{display:flex;flex-direction:column;background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;min-height:500px}
 .inbox-toolbar{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.4rem;border-bottom:1px solid var(--b1);background:var(--s2);gap:12px}
 .iaddr{font-family:var(--mono);font-size:.78rem;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
@@ -101,7 +99,6 @@ header{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify
 .mprev{font-size:.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mtime{font-family:var(--mono);font-size:.65rem;color:var(--muted);white-space:nowrap;flex-shrink:0}
 
-/* Detail */
 .edetail{display:none;flex-direction:column;flex:1}
 .edetail.open{display:flex}
 .dheader{padding:1.1rem 1.4rem;border-bottom:1px solid var(--b1);background:var(--s2)}
@@ -113,13 +110,15 @@ header{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify
 .dbody{flex:1;overflow-y:auto;padding:1.4rem}
 .dbody::-webkit-scrollbar{width:4px}.dbody::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
 .email-frame{background:var(--s2);border-radius:8px;padding:1.1rem;font-size:.85rem;line-height:1.75;color:var(--muted2);word-break:break-word;white-space:pre-wrap}
-.code-box{background:var(--accent-dim);border:1px solid var(--accent-mid);border-radius:7px;padding:.7rem 1.1rem;font-family:var(--mono);font-size:1.2rem;font-weight:600;color:var(--accent);letter-spacing:.18em;display:inline-block;margin:.5rem 0}
+.code-box{background:var(--accent-dim);border:1px solid var(--accent-mid);border-radius:7px;padding:.7rem 1.1rem;font-family:var(--mono);font-size:1.4rem;font-weight:600;color:var(--accent);letter-spacing:.2em;display:inline-block;margin:.5rem 0 1rem}
 
 .spin{animation:spin 0.8s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .toast{position:fixed;bottom:1.75rem;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;font-family:var(--mono);font-size:.75rem;font-weight:700;padding:.5rem 1.4rem;border-radius:100px;opacity:0;pointer-events:none;transition:all .2s;z-index:999}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.api-badge{font-family:var(--mono);font-size:.62rem;color:var(--muted);background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:2px 7px}
 
 footer{position:relative;z-index:1;border-top:1px solid var(--b1);padding:.8rem 2rem;display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:.65rem;color:var(--muted)}
 
@@ -135,7 +134,11 @@ footer{position:relative;z-index:1;border-top:1px solid var(--b1);padding:.8rem 
 
 <header>
   <div class="logo"><div class="logo-dot"></div>Drop<em>Mail</em></div>
-  <div class="hdr-right"><div id="liveDot"></div><span id="liveLabel">offline</span></div>
+  <div class="hdr-right">
+    <span class="api-badge">1secmail</span>
+    <div id="liveDot"></div>
+    <span id="liveLabel">offline</span>
+  </div>
 </header>
 
 <div class="layout">
@@ -196,88 +199,75 @@ footer{position:relative;z-index:1;border-top:1px solid var(--b1);padding:.8rem 
 <div class="toast" id="toast"></div>
 
 <footer>
-  <span>DropMail — Mail.tm + Supabase</span>
+  <span>DropMail — 1secmail + Supabase</span>
   <span id="footerStats">0 addresses stored</span>
 </footer>
 
 <script>
+// ── Config ────────────────────────────────────────────
 const SUPABASE_URL = 'https://ylgtgecqhdhakzbjdkqq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ILF6pER_bdL8GppxOzfumg_xsDoMA6T';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 const TABLE = 'dropmail_addresses';
-const API = 'https://api.mail.tm';
 
-let active = null;
+// 1secmail API - no auth needed at all!
+const API = 'https://www.1secmail.com/api/v1/';
+const DOMAINS = ['1secmail.com','1secmail.org','1secmail.net','wwjmp.com','esiix.com','xojxe.com','yoggm.com'];
+
+let active = null; // { address, login, domain }
 let pollTimer = null;
 let currentMsgs = [];
 let allAccounts = [];
+let seenIds = new Set();
 
-// ── DB ────────────────────────────────────────────────
+// ── Supabase ──────────────────────────────────────────
 async function dbLoad() {
   const { data, error } = await db.from(TABLE).select('*').order('created_at', { ascending: false });
   if (error) { handleDbErr(error); return []; }
   return data || [];
 }
 async function dbSave(a) {
-  const { error } = await db.from(TABLE).insert([{ email: a.address, token: a.token, account_id: a.id }]);
+  const { error } = await db.from(TABLE).insert([{
+    email: a.address,
+    token: a.login,       // reuse token col for login
+    account_id: a.domain  // reuse account_id col for domain
+  }]);
   if (error) handleDbErr(error);
 }
-async function dbDel(email) { await db.from(TABLE).delete().eq('email', email); }
+async function dbDel(email) {
+  await db.from(TABLE).delete().eq('email', email);
+}
 function handleDbErr(e) {
-  if (e.code === '42P01') { setStatus('Table missing — see SQL below', 'err'); showSqlHelp(); }
-  else setStatus('DB: ' + e.message, 'err');
+  if (e.code === '42P01') {
+    setStatus('Table missing — run SQL in Supabase', 'err');
+    showSqlHelp();
+  } else {
+    setStatus('DB: ' + e.message, 'err');
+  }
 }
 
-// ── Mail.tm ───────────────────────────────────────────
-async function safeJson(r) {
-  const text = await r.text();
-  if (!text || !text.trim()) return {};
-  try { return JSON.parse(text); } catch(e) { return {}; }
-}
-async function getDomain() {
-  const r = await fetch(`${API}/domains`);
-  const d = await safeJson(r);
-  const members = d['hydra:member'];
-  if (!members || !members.length) throw new Error('Mail.tm unavailable — try again in a moment');
-  return members[0].domain;
-}
-async function createAccount(address, password) {
-  const r = await fetch(`${API}/accounts`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address, password })
-  });
-  return safeJson(r);
-}
-async function getToken(address, password) {
-  await new Promise(res => setTimeout(res, 1200));
-  for (let i = 0; i < 3; i++) {
-    const r = await fetch(`${API}/token`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, password })
-    });
-    const d = await safeJson(r);
-    if (d.token) return d.token;
-    await new Promise(res => setTimeout(res, 1500));
+// ── 1secmail API ──────────────────────────────────────
+// No auth, no account creation — just pick a username & domain and go
+async function safeJson(url) {
+  try {
+    const r = await fetch(url);
+    const text = await r.text();
+    if (!text || !text.trim()) return null;
+    return JSON.parse(text);
+  } catch(e) {
+    return null;
   }
-  throw new Error('Could not authenticate — Mail.tm may be busy, try again');
 }
-async function fetchMessages(token) {
-  const r = await fetch(`${API}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
-  if (!r.ok) return [];
-  const d = await safeJson(r);
-  return d['hydra:member'] || [];
+
+async function getMessages(login, domain) {
+  const data = await safeJson(`${API}?action=getMessages&login=${login}&domain=${domain}`);
+  return Array.isArray(data) ? data : [];
 }
-async function fetchMessage(id, token) {
-  const r = await fetch(`${API}/messages/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-  return safeJson(r);
-}
-async function markSeen(id, token) {
-  await fetch(`${API}/messages/${id}`, {
-    method: 'PATCH',
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/merge-patch+json' },
-    body: JSON.stringify({ seen: true })
-  });
+
+async function getMessage(login, domain, id) {
+  const data = await safeJson(`${API}?action=readMessage&login=${login}&domain=${domain}&id=${id}`);
+  return data || {};
 }
 
 // ── Generate ──────────────────────────────────────────
@@ -286,27 +276,21 @@ async function generateAddress() {
   const icon = document.getElementById('genIcon');
   btn.disabled = true;
   icon.innerHTML = '<span class="spin">↻</span>';
-  setStatus('Connecting to mail server…');
+  setStatus('Generating address…');
 
   try {
-    const domain = await getDomain();
-    const user = randUser();
-    const address = `${user}@${domain}`;
-    const password = randPass();
+    const login = randUser();
+    const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
+    const address = `${login}@${domain}`;
 
-    const acct = await createAccount(address, password);
-    if (!acct.id) throw new Error(acct['hydra:description'] || 'Account creation failed');
-
-    const token = await getToken(address, password);
-    if (!token) throw new Error('Could not authenticate — try generating again');
-
-    const account = { address, token, id: acct.id };
+    // 1secmail needs no account creation — address is live instantly
+    const account = { address, login, domain };
     await dbSave(account);
     setActive(account);
     setStatus('✓ Inbox ready — share this address!', 'ok');
-    toast('Inbox created!');
+    showToast('Inbox created!');
     await loadHistory();
-  } catch (e) {
+  } catch(e) {
     setStatus('Error: ' + e.message, 'err');
   } finally {
     btn.disabled = false;
@@ -318,37 +302,50 @@ async function generateAddress() {
 async function loadHistory() {
   allAccounts = await dbLoad();
   renderHistory();
-  document.getElementById('footerStats').textContent = `${allAccounts.length} address${allAccounts.length !== 1 ? 'es' : ''} stored`;
+  document.getElementById('footerStats').textContent =
+    `${allAccounts.length} address${allAccounts.length !== 1 ? 'es' : ''} stored`;
 }
+
 function renderHistory() {
   const list = document.getElementById('histList');
   document.getElementById('histCount').textContent = allAccounts.length;
-  if (!allAccounts.length) { list.innerHTML = '<div class="empty-hist">no addresses yet</div>'; return; }
-  list.innerHTML = allAccounts.map(a => `
-    <div class="hist-item ${active?.address === a.email ? 'sel' : ''}" onclick='loadHist(${JSON.stringify({email:a.email,token:a.token,id:a.account_id}).replace(/'/g,"&#39;")})'>
+  if (!allAccounts.length) {
+    list.innerHTML = '<div class="empty-hist">no addresses yet</div>';
+    return;
+  }
+  list.innerHTML = allAccounts.map(a => {
+    const login = a.token || '';
+    const domain = a.account_id || '';
+    const sel = active?.address === a.email ? 'sel' : '';
+    return `<div class="hist-item ${sel}" onclick="loadHist('${esc(a.email)}','${esc(login)}','${esc(domain)}')">
       <span class="hist-addr">${esc(a.email)}</span>
       <div class="ha">
         <button class="ibtn" onclick="event.stopPropagation();copySpec('${esc(a.email)}')" title="Copy">📋</button>
         <button class="ibtn del" onclick="event.stopPropagation();delHist('${esc(a.email)}')" title="Delete">🗑</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
-async function loadHist(row) {
-  if (!row.token) { setStatus('No token stored for this address', 'err'); return; }
-  setActive({ address: row.email, token: row.token, id: row.id });
+
+function loadHist(email, login, domain) {
+  if (!login || !domain) { setStatus('Incomplete record', 'err'); return; }
+  setActive({ address: email, login, domain });
   setStatus('Loaded inbox', 'ok');
 }
+
 async function delHist(email) {
   await dbDel(email);
   if (active?.address === email) { active = null; stopPoll(); resetInbox(); }
   await loadHistory();
-  toast('Deleted');
+  showToast('Deleted');
 }
 
 // ── Active inbox ──────────────────────────────────────
 function setActive(acct) {
   stopPoll();
   active = acct;
+  seenIds = new Set();
+
   document.getElementById('addrBox').classList.add('active');
   document.getElementById('addrText').textContent = acct.address;
   document.getElementById('addrText').classList.remove('ph');
@@ -356,27 +353,44 @@ function setActive(acct) {
   document.getElementById('refreshBtn').disabled = false;
   document.getElementById('iAddr').textContent = acct.address;
   document.getElementById('iAddr').classList.remove('ph');
+
   setLive(true);
   refreshInbox();
   startPoll();
   renderHistory();
 }
+
 async function refreshInbox() {
   if (!active) return;
   const rbtn = document.getElementById('refreshBtn');
   const icon = document.getElementById('refreshIcon');
   rbtn.disabled = true;
   icon.classList.add('spin');
+
   try {
-    const msgs = await fetchMessages(active.token);
+    const msgs = await getMessages(active.login, active.domain);
+    // detect new messages
+    msgs.forEach(m => {
+      if (!seenIds.has(m.id)) {
+        seenIds.add(m.id);
+      }
+    });
     currentMsgs = msgs;
     renderMsgs(msgs);
-  } catch(e) { setStatus('Fetch error: ' + e.message, 'err'); }
-  finally { rbtn.disabled = false; icon.classList.remove('spin'); }
+  } catch(e) {
+    setStatus('Fetch error: ' + e.message, 'err');
+  } finally {
+    rbtn.disabled = false;
+    icon.classList.remove('spin');
+  }
 }
+
 function renderMsgs(msgs) {
   const body = document.getElementById('inboxBody');
-  document.getElementById('iMeta').textContent = msgs.length ? `${msgs.length} msg${msgs.length > 1 ? 's' : ''}` : 'empty';
+  document.getElementById('iMeta').textContent = msgs.length
+    ? `${msgs.length} msg${msgs.length > 1 ? 's' : ''}`
+    : 'empty';
+
   if (!msgs.length) {
     body.innerHTML = `<div class="iplaceholder">
       <div class="bigicon">📭</div>
@@ -385,41 +399,59 @@ function renderMsgs(msgs) {
     </div>`;
     return;
   }
+
   body.innerHTML = '<div class="msg-list">' + msgs.map(m => {
-    const from = m.from?.address || 'unknown';
-    const name = m.from?.name || from;
-    const initials = name.replace(/[^a-zA-Z]/g,'').slice(0,2).toUpperCase() || '??';
-    return `<div class="msg-item ${m.seen ? '' : 'unread'}" onclick="openMsg('${m.id}')">
+    const from = m.from || 'unknown';
+    const initials = from.replace(/[^a-zA-Z]/g,'').slice(0,2).toUpperCase() || '??';
+    const unread = !m.seen ? 'unread' : '';
+    return `<div class="msg-item ${unread}" onclick="openMsg(${m.id})">
       <div class="mavatar">${initials}</div>
       <div class="mcontent">
-        <div class="mfrom">${esc(name)}</div>
+        <div class="mfrom">${esc(from)}</div>
         <div class="msubj">${esc(m.subject || '(no subject)')}</div>
-        <div class="mprev">${esc(m.intro || '')}</div>
+        <div class="mprev"></div>
       </div>
-      <div class="mtime">${fmtTime(m.createdAt)}</div>
+      <div class="mtime">${fmtTime(m.date)}</div>
     </div>`;
   }).join('') + '</div>';
 }
+
 async function openMsg(id) {
-  const msg = await fetchMessage(id, active.token);
-  await markSeen(id, active.token);
-  currentMsgs = currentMsgs.map(m => m.id === id ? {...m, seen: true} : m);
+  setStatus('Loading message…');
+  const msg = await getMessage(active.login, active.domain, id);
+  setStatus('');
 
   document.getElementById('dSubj').textContent = msg.subject || '(no subject)';
   document.getElementById('dMeta').innerHTML =
-    `From: <span>${esc(msg.from?.address || '')}</span><br>To: <span>${esc(active.address)}</span><br>Date: <span>${new Date(msg.createdAt).toLocaleString()}</span>`;
+    `From: <span>${esc(msg.from || '')}</span><br>` +
+    `To: <span>${esc(active.address)}</span><br>` +
+    `Date: <span>${esc(msg.date || '')}</span>`;
 
-  const txt = msg.text || stripHtml(msg.html?.[0] || '');
-  const codeMatch = txt.match(/\b([A-Z0-9]{5,10}|\d{4,8})\b/);
-  let bodyHtml = `<div class="email-frame">${esc(txt)}</div>`;
+  // get best text content
+  const txt = msg.textBody || stripHtml(msg.htmlBody || '') || '(no content)';
+
+  // detect verification codes
+  const codeMatch = txt.match(/\b(\d{4,8}|[A-Z0-9]{6,10})\b/);
+  let bodyHtml = '';
   if (codeMatch) {
-    bodyHtml = `<p style="font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-bottom:6px">// detected code</p>
-      <div class="code-box">${esc(codeMatch[0])}</div>` + bodyHtml;
+    bodyHtml += `<p style="font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-bottom:6px">// verification code detected</p>
+      <div class="code-box">${esc(codeMatch[0])}</div><br>`;
   }
+  bodyHtml += `<div class="email-frame">${esc(txt)}</div>`;
+
+  // attachments
+  if (msg.attachments && msg.attachments.length) {
+    bodyHtml += `<p style="margin-top:1rem;font-size:.72rem;color:var(--muted);font-family:var(--mono)">// ${msg.attachments.length} attachment(s): ${msg.attachments.map(a=>esc(a.filename)).join(', ')}</p>`;
+  }
+
   document.getElementById('dBody').innerHTML = bodyHtml;
   document.getElementById('inboxBody').style.display = 'none';
   document.getElementById('eDetail').classList.add('open');
+
+  // mark as read in local list
+  currentMsgs = currentMsgs.map(m => m.id === id ? {...m, seen: true} : m);
 }
+
 function closeDetail() {
   document.getElementById('eDetail').classList.remove('open');
   document.getElementById('inboxBody').style.display = '';
@@ -427,51 +459,80 @@ function closeDetail() {
 }
 
 // ── Poll ──────────────────────────────────────────────
-function startPoll() { pollTimer = setInterval(() => { if (active && !document.getElementById('eDetail').classList.contains('open')) refreshInbox(); }, 10000); }
+function startPoll() {
+  pollTimer = setInterval(() => {
+    if (active && !document.getElementById('eDetail').classList.contains('open')) {
+      refreshInbox();
+    }
+  }, 8000);
+}
 function stopPoll() { clearInterval(pollTimer); pollTimer = null; }
 function resetInbox() {
   document.getElementById('iAddr').textContent = 'select or generate an inbox';
   document.getElementById('iAddr').classList.add('ph');
   document.getElementById('refreshBtn').disabled = true;
   document.getElementById('iMeta').textContent = '';
-  document.getElementById('inboxBody').innerHTML = `<div class="iplaceholder"><div class="bigicon">📬</div><h3>Your inbox will appear here</h3><p>Generate a new address or pick a saved one.</p></div>`;
+  document.getElementById('inboxBody').innerHTML = `<div class="iplaceholder">
+    <div class="bigicon">📬</div>
+    <h3>Your inbox will appear here</h3>
+    <p>Generate a new address or pick a saved one.</p>
+  </div>`;
   setLive(false);
 }
 
 // ── UI helpers ────────────────────────────────────────
-function setStatus(msg, type = '') { const e = document.getElementById('status'); e.textContent = msg; e.className = 'status ' + type; }
-function setLive(on) { document.getElementById('liveDot').className = on ? 'live' : ''; document.getElementById('liveLabel').textContent = on ? 'live' : 'offline'; }
+function setStatus(msg, type='') {
+  const e = document.getElementById('status');
+  e.textContent = msg; e.className = 'status ' + type;
+}
+function setLive(on) {
+  document.getElementById('liveDot').className = on ? 'live' : '';
+  document.getElementById('liveLabel').textContent = on ? 'live' : 'offline';
+}
 function copyAddr() { if (active) copySpec(active.address); }
-function copySpec(addr) { navigator.clipboard.writeText(addr).then(() => toast('Copied!')); }
-function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+function copySpec(addr) { navigator.clipboard.writeText(addr).then(() => showToast('Copied!')); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
 function showSqlHelp() {
   document.getElementById('histList').innerHTML = `<div style="font-size:.68rem;color:var(--muted);font-family:var(--mono);background:var(--bg);border-radius:6px;padding:10px;line-height:1.9">
-    Run in Supabase SQL editor:<br><br>
-    CREATE TABLE dropmail_addresses (<br>
-    &nbsp;id uuid DEFAULT gen_random_uuid() PRIMARY KEY,<br>
-    &nbsp;email text NOT NULL,<br>
-    &nbsp;token text,<br>
-    &nbsp;account_id text,<br>
-    &nbsp;created_at timestamptz DEFAULT now()<br>
-    );
+    ALTER TABLE dropmail_addresses<br>
+    ADD COLUMN IF NOT EXISTS token text,<br>
+    ADD COLUMN IF NOT EXISTS account_id text;
   </div>`;
 }
 
 // ── Utils ─────────────────────────────────────────────
-const adjs = ['cozy','swift','fuzzy','lucky','sunny','brave','witty','calm','merry','jolly','silent','clever','gentle','noble','vivid','peppy','sassy','shiny'];
-const nouns = ['tiger','panda','falcon','river','pebble','ember','cloud','spark','maple','cedar','orbit','pixel','quill','raven','stone','brook','flame'];
-function randUser() { return `${adjs[~~(Math.random()*adjs.length)]}.${nouns[~~(Math.random()*nouns.length)]}.${~~(Math.random()*9000)+100}`; }
-function randPass() { const c='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; return Array.from({length:16},()=>c[Math.floor(Math.random()*c.length)]).join(''); }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function stripHtml(h) { return h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(); }
-function fmtTime(iso) {
-  const d = new Date(iso), now = new Date(), diff = now - d;
+const adjs  = ['cozy','swift','fuzzy','lucky','sunny','brave','witty','calm','merry','jolly','silent','clever','gentle','noble','vivid','peppy','sassy','shiny','funky','zippy'];
+const nouns = ['tiger','panda','falcon','river','pebble','ember','cloud','spark','maple','cedar','orbit','pixel','quill','raven','stone','brook','flame','prism','comet','drift'];
+function randUser() {
+  const a = adjs[Math.floor(Math.random()*adjs.length)];
+  const n = nouns[Math.floor(Math.random()*nouns.length)];
+  const num = Math.floor(Math.random()*9000)+100;
+  return `${a}${n}${num}`;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function stripHtml(h) {
+  return h.replace(/<style[\s\S]*?<\/style>/gi,'')
+          .replace(/<script[\s\S]*?<\/script>/gi,'')
+          .replace(/<[^>]+>/g,' ')
+          .replace(/\s+/g,' ').trim();
+}
+function fmtTime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr), now = new Date(), diff = now - d;
+  if (isNaN(diff)) return dateStr;
   if (diff < 60000) return 'just now';
-  if (diff < 3600000) return ~~(diff/60000) + 'm ago';
-  if (diff < 86400000) return ~~(diff/3600000) + 'h ago';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
   return d.toLocaleDateString();
 }
 
+// ── Init ──────────────────────────────────────────────
 loadHistory();
 </script>
 </body>
